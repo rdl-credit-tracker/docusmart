@@ -181,7 +181,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
   <div class="seg" id="langSeg"></div>
   <h2 data-i18n="other"></h2>
   <div class="rows" id="otherRows"></div>
-  <p class="ver">DocuSmart v0.3.6 (PWA)</p>
+  <p class="ver">DocuSmart v0.3.7</p>
 </section>
 
 </main>
@@ -391,8 +391,8 @@ const Img={
   if(mode==='gray'){for(let i=0;i<d.length;i+=4){d[i]=d[i+1]=d[i+2]=lum(i)}}
   else if(mode==='hc'){for(let i=0;i<d.length;i+=4)for(let c=0;c<3;c++)d[i+c]=Math.max(0,Math.min(255,(d[i+c]-128)*1.6+128))}
   else if(mode==='enh'){
-   const hist=new Array(256).fill(0);for(let i=0;i<d.length;i+=4)hist[lum(i)]++;
-   let lo=0,hi=255,a=0;while(lo<255&&(a+=hist[lo])<n*.01)lo++;a=0;while(hi>0&&(a+=hist[hi])<n*.01)hi--;
+   const hl=new Array(256).fill(0),hh=new Array(256).fill(0);for(let i=0;i<d.length;i+=4){hl[Math.min(d[i],d[i+1],d[i+2])]++;hh[Math.max(d[i],d[i+1],d[i+2])]++}
+   let lo=0,hi=255,a=0;while(lo<255&&(a+=hl[lo])<n*.005)lo++;a=0;while(hi>0&&(a+=hh[hi])<n*.005)hi--;
    const s=255/Math.max(1,hi-lo);for(let i=0;i<d.length;i+=4)for(let c=0;c<3;c++)d[i+c]=Math.max(0,Math.min(255,(d[i+c]-lo)*s));
   }
   else if(mode==='bw'){ /* adaptive threshold: removes shadows */
@@ -450,9 +450,9 @@ const Camera={
  async open(){
   this.init();this.pages=[];this.el.hidden=false;this.show('live');
   try{
-   this.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
+   this.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}},audio:false});
    this.video.srcObject=this.stream;await this.video.play();
-   const tr=this.stream.getVideoTracks()[0];this.track=tr;this.torch=false;
+   const tr=this.stream.getVideoTracks()[0];this.track=tr;this.torch=false;try{await tr.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
    this.$('cFlash').style.display=(tr.getCapabilities&&tr.getCapabilities().torch)?'':'none';
   }catch(e){UI.toast(ct('noCam'));this.close()}
  },
@@ -496,7 +496,7 @@ const Camera={
   this.cq.forEach(p=>{c.beginPath();c.arc(p[0]*s,p[1]*s,14,0,7);c.fillStyle='#fff';c.fill();c.lineWidth=3;c.stroke()});
  },
  applyCrop(){
-  this.base=Img.warp(this.cap,this.cq);this.fi='enh';this.show('filter');this.renderFilter();
+  this.base=Img.warp(this.cap,this.cq);const mi=[...document.querySelectorAll('#modes .chip')].findIndex(c=>c.classList.contains('on'));this.fi=mi===1?'orig':'enh';this.show('filter');this.renderFilter();
  },
  renderFilter(){
   this.cur=Img.filter(this.base,this.fi);this.fit(this.$('fCv'),this.cur);
