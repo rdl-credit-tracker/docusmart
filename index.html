@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B3C8C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>DocuSmart</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -178,7 +181,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
   <div class="seg" id="langSeg"></div>
   <h2 data-i18n="other"></h2>
   <div class="rows" id="otherRows"></div>
-  <p class="ver">DocuSmart v0.3.5 (Phase 3.5)</p>
+  <p class="ver">DocuSmart v0.3.6 (PWA)</p>
 </section>
 
 </main>
@@ -753,6 +756,8 @@ UI.docItem=function(d){
 
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 UI.renderAll();
+
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
 </body>
 </html>
