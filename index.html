@@ -131,6 +131,14 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
 #sheet .sb button{display:block;width:100%;text-align:left;padding:14px 4px;border-bottom:1px solid var(--line)}
 #sheet .sb button:last-child{border:0}
 #sheet .dg{color:#D93025}
+/* scan page */
+button.viewfinder{width:100%;height:44vh;max-height:420px;background:linear-gradient(160deg,#0B3C8C,#0E9F9A);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:28px;box-shadow:0 10px 26px rgba(11,60,140,.28);padding:24px}
+button.viewfinder .vfi{font-size:52px;width:96px;height:96px;border-radius:30px;background:rgba(255,255,255,.18);display:grid;place-items:center}
+button.viewfinder b{font-size:20px}
+button.viewfinder small{font-size:13px;opacity:.85}
+button.viewfinder .frame{border-color:rgba(255,255,255,.55)}
+button.viewfinder:active{transform:scale(.99)}
+#scan .modes .chip{flex:1;padding:12px 8px;font-size:14px;text-align:center}
 </style>
 </head>
 <body>
@@ -163,9 +171,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
 
 <section class="screen" id="scan">
   <h1 class="title" data-i18n="navScan"></h1>
-  <div class="viewfinder"><div class="frame"></div><p data-i18n="camPhase"></p></div>
+  <button class="viewfinder" id="vf" aria-label="Scan"><div class="frame"></div><span class="vfi">📷</span><b data-i18n="tapScan"></b><small data-i18n="vfHint"></small></button>
+  <h2 data-i18n="modeTitle"></h2>
   <div class="modes" id="modes"></div>
-  <button class="primary" id="startScan" data-i18n="startScan"></button>
+  
 </section>
 
 <section class="screen" id="tools">
@@ -181,7 +190,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
   <div class="seg" id="langSeg"></div>
   <h2 data-i18n="other"></h2>
   <div class="rows" id="otherRows"></div>
-  <p class="ver">DocuSmart v0.3.7</p>
+  <p class="ver">DocuSmart v0.3.9</p>
 </section>
 
 </main>
@@ -206,7 +215,7 @@ const STR = {
   privacy:'Privacy policy',terms:'Terms and conditions',about:'App information',notif:'Notifications',
   tPdf:'Image to PDF',tMerge:'Merge PDF',tSplit:'Split PDF',tComp:'Compress PDF',tOcr:'Smart OCR',tAi:'AI assistant',tQr:'QR scanner',tBar:'Barcode scanner',
   tId:'ID card scanner',tPass:'Passport scanner',tBiz:'Business card',tRec:'Receipt scanner',tSign:'Signature maker',tRes:'Image resizer',tConv:'Document converter',tP2I:'PDF to image',
-  mDoc:'Document',mId:'ID card',mBook:'Book',mRec:'Receipt',soon:'Coming in Phase'},
+  mDoc:'Document',mId:'ID card',mBook:'Book',mRec:'Receipt',soon:'Coming in Phase',tapScan:'Tap to scan',vfHint:'The camera opens and edges are detected automatically',modeTitle:'Scan type'},
  bn:{tagline:'আপনার ডকুমেন্ট, আরও স্মার্ট।',scanDoc:'ডকুমেন্ট স্ক্যান করুন',scanHint:'ক্যামেরা খুলবে',statDocs:'ডকুমেন্ট',statFav:'ফেভারিট',statPages:'পৃষ্ঠা',
   quick:'দ্রুত কাজ',recent:'সাম্প্রতিক ডকুমেন্ট',storage:'স্টোরেজ',navHome:'হোম',navFiles:'ফাইল',navScan:'স্ক্যান',navTools:'টুলস',navSettings:'সেটিংস',
   search:'ডকুমেন্ট খুঁজুন',camPhase:'মোড বেছে স্ক্যান শুরু করুন।',startScan:'স্ক্যান শুরু করুন',appearance:'চেহারা',language:'ভাষা',other:'আরও',
@@ -215,7 +224,7 @@ const STR = {
   privacy:'গোপনীয়তা নীতি',terms:'শর্তাবলি',about:'অ্যাপ তথ্য',notif:'নোটিফিকেশন',
   tPdf:'ছবি থেকে PDF',tMerge:'PDF একত্র করুন',tSplit:'PDF আলাদা করুন',tComp:'PDF ছোট করুন',tOcr:'স্মার্ট OCR',tAi:'AI সহকারী',tQr:'QR স্ক্যানার',tBar:'বারকোড স্ক্যানার',
   tId:'আইডি কার্ড স্ক্যানার',tPass:'পাসপোর্ট স্ক্যানার',tBiz:'বিজনেস কার্ড',tRec:'রশিদ স্ক্যানার',tSign:'সিগনেচার মেকার',tRes:'ছবির সাইজ বদল',tConv:'ডকুমেন্ট কনভার্টার',tP2I:'PDF থেকে ছবি',
-  mDoc:'ডকুমেন্ট',mId:'আইডি কার্ড',mBook:'বই',mRec:'রশিদ',soon:'আসছে Phase'}
+  mDoc:'ডকুমেন্ট',mId:'আইডি কার্ড',mBook:'বই',mRec:'রশিদ',soon:'আসছে Phase',tapScan:'স্ক্যান করতে ট্যাপ করুন',vfHint:'ক্যামেরা খুলবে, কিনারা নিজে শনাক্ত হবে',modeTitle:'স্ক্যানের ধরন'}
 };
 /* tool key, icon, phase it is built in */
 const TOOLS=[['tPdf','🖼️',3],['tMerge','🔗',3],['tSplit','✂️',3],['tComp','🗜️',3],['tOcr','🔠',4],['tAi','✨',4],['tQr','▦',2],['tBar','𝄃',2],
@@ -295,7 +304,7 @@ const UI={
   [['all','all'],['fav','fav'],['pdf','pdf'],['img','img']].forEach(([v,k])=>{const b=document.createElement('button');
    b.className='chip'+(this.filter===v?' on':'');b.textContent=I18n.t(k);b.onclick=()=>{this.filter=v;this.renderAll()};ch.append(b)});
   const md=document.getElementById('modes');md.innerHTML='';
-  MODES.forEach((k,i)=>{const b=document.createElement('button');b.className='chip'+(i===0?' on':'');b.textContent=I18n.t(k);
+  MODES.forEach((k,i)=>{const b=document.createElement('button');b.className='chip'+(i===0?' on':'');b.dataset.l=I18n.t(k);b.textContent=['📄','🪪','📖','🧾'][i]+' '+I18n.t(k);
    b.onclick=()=>{md.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));b.classList.add('on')};md.append(b)});
   this.seg('themeSeg',[['light',I18n.t('light')],['dark',I18n.t('dark')],['system',I18n.t('system')]],Theme.mode,v=>{Theme.set(v);this.renderAll()});
   this.seg('langSeg',[['en','English'],['bn','বাংলা']],I18n.lang,v=>I18n.set(v));
@@ -309,7 +318,7 @@ const UI={
 document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)UI.go(b.dataset.go)});
 document.querySelector('.scan-cta').addEventListener('click',()=>Camera.open());
 document.getElementById('search').addEventListener('input',()=>UI.renderFiles());
-document.getElementById('startScan').onclick=()=>Camera.open();
+document.getElementById('vf').onclick=()=>Camera.open();
 Theme.apply();document.documentElement.lang=I18n.lang;
 UI.renderAll();UI.go('home');
 
@@ -318,10 +327,10 @@ UI.renderAll();UI.go('home');
 const CT={
  en:{shot:'Capture',auto:'Auto',on:'on',off:'off',done:'Done',apply:'Apply',add:'Add page',save:'Save',retake:'Retake',saved:'Document saved',
   noCam:'Camera is not available. Allow camera access in the app settings and try again.',hold:'Hold steady…',crop:'Drag the corners to fit the document',
-  filt:'Hold the image to compare with the original',nopage:'Add at least one page',orig:'Original',enh:'Auto',gray:'Gray',bw:'B&W',hc:'Contrast'},
+  filt:'Hold the image to compare with the original',nopage:'Add at least one page',orig:'Original',enh:'Auto',gray:'Gray',bw:'B&W',hc:'Contrast',sharp:'Sharp'},
  bn:{shot:'ছবি তুলুন',auto:'অটো',on:'চালু',off:'বন্ধ',done:'শেষ',apply:'প্রয়োগ',add:'পৃষ্ঠা যোগ',save:'সংরক্ষণ',retake:'আবার তুলুন',saved:'ডকুমেন্ট সংরক্ষিত হয়েছে',
   noCam:'ক্যামেরা পাওয়া যায়নি। অ্যাপ সেটিংসে ক্যামেরার অনুমতি দিয়ে আবার চেষ্টা করুন।',hold:'স্থির রাখুন…',crop:'কোণা টেনে ডকুমেন্টের সীমানা ঠিক করুন',
-  filt:'আসল ছবির সঙ্গে মেলাতে ছবিতে চেপে ধরুন',nopage:'অন্তত একটি পৃষ্ঠা যোগ করুন',orig:'আসল',enh:'অটো',gray:'ধূসর',bw:'সাদা-কালো',hc:'কনট্রাস্ট'}
+  filt:'আসল ছবির সঙ্গে মেলাতে ছবিতে চেপে ধরুন',nopage:'অন্তত একটি পৃষ্ঠা যোগ করুন',orig:'আসল',enh:'অটো',gray:'ধূসর',bw:'সাদা-কালো',hc:'কনট্রাস্ট',sharp:'তীক্ষ্ণ'}
 };
 const ct=k=>(CT[I18n.lang]||CT.en)[k];
 
@@ -333,7 +342,7 @@ const DB={
 const Img={
  /* finds the largest bright region, returns [TL,TR,BR,BL] in 0..1 or null */
  detect(video,sc){
-  const w=160,h=Math.round(160*video.videoHeight/video.videoWidth),n=w*h;sc.width=w;sc.height=h;
+  const w=160,h=Math.round(160*(video.videoHeight||video.height)/(video.videoWidth||video.width)),n=w*h;sc.width=w;sc.height=h;
   const c=sc.getContext('2d',{willReadFrequently:true});c.drawImage(video,0,0,w,h);
   const d=c.getImageData(0,0,w,h).data,g=new Uint8Array(n),hist=new Array(256).fill(0);
   for(let i=0;i<n;i++){const v=(d[i*4]*77+d[i*4+1]*150+d[i*4+2]*29)>>8;g[i]=v;hist[v]++}
@@ -365,7 +374,7 @@ const Img={
   return x;
  },
  /* perspective correction: maps the quad (pixel coords) onto a flat rectangle */
- warp(src,q,maxSide=1800){
+ warp(src,q,maxSide=2600){
   const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
   let W=Math.max(dist(q[0],q[1]),dist(q[3],q[2])),H=Math.max(dist(q[0],q[3]),dist(q[1],q[2]));
   const k=Math.min(1,maxSide/Math.max(W,H));W=Math.max(16,Math.round(W*k));H=Math.max(16,Math.round(H*k));
@@ -394,6 +403,11 @@ const Img={
    const hl=new Array(256).fill(0),hh=new Array(256).fill(0);for(let i=0;i<d.length;i+=4){hl[Math.min(d[i],d[i+1],d[i+2])]++;hh[Math.max(d[i],d[i+1],d[i+2])]++}
    let lo=0,hi=255,a=0;while(lo<255&&(a+=hl[lo])<n*.005)lo++;a=0;while(hi>0&&(a+=hh[hi])<n*.005)hi--;
    const s=255/Math.max(1,hi-lo);for(let i=0;i<d.length;i+=4)for(let c=0;c<3;c++)d[i+c]=Math.max(0,Math.min(255,(d[i+c]-lo)*s));
+  }
+  else if(mode==='sharp'){
+   const src=new Uint8ClampedArray(d),W4=W*4;
+   for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=(y*W+x)*4;
+    for(let c=0;c<3;c++){const k=i+c,bl=(src[k-4]+src[k+4]+src[k-W4]+src[k+W4]+src[k]*4)/8;d[k]=src[k]+1.1*(src[k]-bl)}}
   }
   else if(mode==='bw'){ /* adaptive threshold: removes shadows */
    const g=new Uint8Array(n),I=new Float64Array((W+1)*(H+1));
@@ -478,11 +492,22 @@ const Camera={
   c.beginPath();q.forEach((p,i)=>{const x=ox+p[0]*v.videoWidth*s,y=oy+p[1]*v.videoHeight*s;i?c.lineTo(x,y):c.moveTo(x,y)});c.closePath();
   c.fillStyle='rgba(14,159,154,.22)';c.fill();c.lineWidth=3;c.strokeStyle='#19D3CB';c.stroke();
  },
- capture(){
-  const v=this.video;if(!v.videoWidth)return;
-  const c=this.cap=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);
-  const q=this.quad||[[.08,.08],[.92,.08],[.92,.92],[.08,.92]];
-  this.cq=q.map(p=>[p[0]*c.width,p[1]*c.height]);
+ async capture(){
+  const v=this.video;if(!v.videoWidth||this.busy)return;this.busy=true;
+  const live=this.quad;let c=document.createElement('canvas'),q=live,ok=false;
+  try{
+   if(window.ImageCapture&&this.track){
+    const bm=await createImageBitmap(await new ImageCapture(this.track).takePhoto({fillLightMode:'off'})),k=Math.min(1,4096/Math.max(bm.width,bm.height));
+    if((bm.width>bm.height)===(v.videoWidth>v.videoHeight)){
+     c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);ok=true;
+     if(Math.abs(c.width/c.height-v.videoWidth/v.videoHeight)>.03)q=Img.detect(c,this.sc);
+    }
+   }
+  }catch(e){ok=false}
+  if(!ok){c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);q=live}
+  if(q){const cx=q.reduce((a,p)=>a+p[0],0)/4,cy=q.reduce((a,p)=>a+p[1],0)/4,cl=x=>Math.max(0,Math.min(1,x));q=q.map(p=>[cl(cx+(p[0]-cx)*1.015),cl(cy+(p[1]-cy)*1.015)])}
+  q=q||[[.08,.08],[.92,.08],[.92,.92],[.08,.92]];
+  this.cap=c;this.cq=q.map(p=>[p[0]*c.width,p[1]*c.height]);this.busy=false;
   this.show('crop');this.drawCrop();
  },
  fit(cv,src){
@@ -496,12 +521,12 @@ const Camera={
   this.cq.forEach(p=>{c.beginPath();c.arc(p[0]*s,p[1]*s,14,0,7);c.fillStyle='#fff';c.fill();c.lineWidth=3;c.stroke()});
  },
  applyCrop(){
-  this.base=Img.warp(this.cap,this.cq);const mi=[...document.querySelectorAll('#modes .chip')].findIndex(c=>c.classList.contains('on'));this.fi=mi===1?'orig':'enh';this.show('filter');this.renderFilter();
+  this.base=Img.warp(this.cap,this.cq);const mi=[...document.querySelectorAll('#modes .chip')].findIndex(c=>c.classList.contains('on'));this.fi=mi===1?'sharp':'enh';this.show('filter');this.renderFilter();
  },
  renderFilter(){
   this.cur=Img.filter(this.base,this.fi);this.fit(this.$('fCv'),this.cur);
   const box=this.$('fChips');box.innerHTML='';
-  ['orig','enh','gray','bw','hc'].forEach(k=>{const b=document.createElement('button');b.className='chip'+(this.fi===k?' on':'');b.textContent=ct(k);
+  ['orig','enh','sharp','gray','bw','hc'].forEach(k=>{const b=document.createElement('button');b.className='chip'+(this.fi===k?' on':'');b.textContent=ct(k);
    b.onclick=()=>{this.fi=k;this.renderFilter()};box.append(b)});
  },
  async addPage(){
@@ -515,7 +540,7 @@ const Camera={
    const id='d'+Date.now(),n=this.pages.length;
    for(let i=0;i<n;i++)await DB.put(id+'_'+i,this.pages[i]);
    const m=document.querySelector('#modes .chip.on'),dt=new Date();
-   const name=`${m?m.textContent:'Scan'} ${dt.toLocaleDateString()} ${dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+   const name=`${m?(m.dataset.l||m.textContent):'Scan'} ${dt.toLocaleDateString()} ${dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
    const docs=Store.docs();docs.push({id,name,date:dt.getTime(),pages:n,type:'img',fav:false});
    localStorage.setItem('ds_docs',JSON.stringify(docs));
    this.close();UI.renderAll();UI.toast(ct('saved'));UI.go('files');
