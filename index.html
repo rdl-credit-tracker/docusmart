@@ -112,6 +112,22 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
 .padbox{background:var(--card);padding:14px;border-radius:20px;width:min(92vw,360px)}
 .padbox canvas{width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;touch-action:none}
 .padbtn{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+/* Phase 3.5: file manager */
+.item{cursor:pointer}
+.item .th{overflow:hidden;flex:none}
+.item .th img{width:100%;height:100%;object-fit:cover}
+.item .mt{flex:1;min-width:0}
+.item .mt b,.item .mt small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{width:36px;height:36px;border-radius:12px;font-size:20px;flex:none}
+#vw{position:fixed;inset:0;z-index:48;background:var(--bg);display:flex;flex-direction:column;padding-top:var(--top)}
+#vw[hidden]{display:none}
+#vw .vt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}
+.vp{display:block;width:100%;margin:10px 0;border-radius:8px;border:1px solid var(--line)}
+#sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.5);display:flex;align-items:flex-end}
+#sheet .sb{width:100%;background:var(--card);border-radius:24px 24px 0 0;padding:14px 16px calc(14px + var(--bot))}
+#sheet .sb button{display:block;width:100%;text-align:left;padding:14px 4px;border-bottom:1px solid var(--line)}
+#sheet .sb button:last-child{border:0}
+#sheet .dg{color:#D93025}
 </style>
 </head>
 <body>
@@ -162,7 +178,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
   <div class="seg" id="langSeg"></div>
   <h2 data-i18n="other"></h2>
   <div class="rows" id="otherRows"></div>
-  <p class="ver">DocuSmart v0.3.0 (Phase 3)</p>
+  <p class="ver">DocuSmart v0.3.5 (Phase 3.5)</p>
 </section>
 
 </main>
@@ -658,6 +674,85 @@ const Studio={
   }catch(e){if(e&&e.name!=='AbortError')UI.toast(ps('fail')+(e.message||e))}
  }
 };
+
+'use strict';
+/* File manager (Phase 3.5): open, thumbnails, favorite, rename, share, delete */
+const FT={
+ en:{open:'Open',share:'Share',rename:'Rename',fav:'Add to favorites',unfav:'Remove from favorites',del:'Delete',ask:'Delete this document? This cannot be undone.',newName:'New name',pdfInfo:'This is a PDF file.',openPdf:'Open PDF',gone:'File data not found.',deleted:'Deleted',renamed:'Renamed',page:'Page'},
+ bn:{open:'খুলুন',share:'শেয়ার',rename:'নাম বদল',fav:'ফেভারিটে যোগ',unfav:'ফেভারিট থেকে সরান',del:'ডিলিট',ask:'ডকুমেন্টটি ডিলিট করবেন? এটি ফেরানো যাবে না।',newName:'নতুন নাম',pdfInfo:'এটি একটি PDF ফাইল।',openPdf:'PDF খুলুন',gone:'ফাইলের ডেটা পাওয়া যায়নি।',deleted:'ডিলিট হয়েছে',renamed:'নাম বদলেছে',page:'পৃষ্ঠা'}
+};
+const ft=k=>(FT[I18n.lang]||FT.en)[k];
+DB.del=async function(k){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('pages','readwrite');t.objectStore('pages').delete(k);t.oncomplete=res;t.onerror=()=>rej(t.error)})};
+Store.save=docs=>localStorage.setItem('ds_docs',JSON.stringify(docs));
+
+const Files={
+ urls:new Map(),vurls:[],
+ async blobs(d){const out=[];
+  if(d.type==='pdf'){const b=await DB.get(d.id+'_pdf');if(b)out.push(b)}
+  else for(let i=0;i<d.pages;i++){const b=await DB.get(d.id+'_'+i);if(b)out.push(b)}
+  return out},
+ async thumb(d,box){
+  if(d.type==='pdf'){box.textContent='📕';return}
+  try{let u=this.urls.get(d.id);
+   if(!u){const b=await DB.get(d.id+'_0');if(!b)return;u=URL.createObjectURL(b);this.urls.set(d.id,u)}
+   const im=new Image();im.alt='';im.src=u;box.textContent='';box.append(im)}catch(e){}},
+ update(id,fn){const docs=Store.docs(),d=docs.find(x=>x.id===id);if(d){fn(d);Store.save(docs);UI.renderAll()}},
+ fav(d){this.update(d.id,x=>{x.fav=!x.fav})},
+ rename(d){const n=prompt(ft('newName'),d.name);
+  if(n&&n.trim()){this.update(d.id,x=>{x.name=n.trim().replace(/[\\/:*?"<>|]/g,'-')});UI.toast(ft('renamed'))}},
+ async remove(d){
+  if(!confirm(ft('ask')))return;
+  try{const keys=d.type==='pdf'?[d.id+'_pdf']:Array.from({length:d.pages},(_,i)=>d.id+'_'+i);
+   for(const k of keys)await DB.del(k)}catch(e){}
+  const u=this.urls.get(d.id);if(u){URL.revokeObjectURL(u);this.urls.delete(d.id)}
+  Store.save(Store.docs().filter(x=>x.id!==d.id));UI.renderAll();UI.toast(ft('deleted'))},
+ async share(d){
+  const bl=await this.blobs(d);if(!bl.length){UI.toast(ft('gone'));return}
+  const pdf=d.type==='pdf',ext=pdf?'pdf':'jpg',mt=pdf?'application/pdf':'image/jpeg',nm=d.name.replace(/[\\/:*?"<>|]/g,'-');
+  const files=bl.map((b,i)=>new File([b],bl.length>1?`${nm}-${i+1}.${ext}`:`${nm}.${ext}`,{type:mt}));
+  try{if(navigator.canShare&&navigator.canShare({files})){await navigator.share({files});return}}
+  catch(e){if(e&&e.name==='AbortError')return}
+  files.forEach(f=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.append(a);a.click();a.remove()})},
+ sheet(d){
+  const s=document.createElement('div');s.id='sheet';const box=document.createElement('div');box.className='sb';s.append(box);
+  const t=document.createElement('p');t.className='lbl';t.textContent=d.name;box.append(t);
+  [['open',()=>this.open(d)],['share',()=>this.share(d)],['rename',()=>this.rename(d)],[d.fav?'unfav':'fav',()=>this.fav(d)],['del',()=>this.remove(d)]].forEach(([k,fn])=>{
+   const b=document.createElement('button');b.textContent=ft(k);if(k==='del')b.className='dg';b.onclick=()=>{s.remove();fn()};box.append(b)});
+  s.onclick=e=>{if(e.target===s)s.remove()};document.body.append(s)},
+ view(){
+  if(this.vw)return this.vw;
+  const v=document.createElement('div');v.id='vw';v.hidden=true;
+  v.innerHTML='<div class="psh"><button id="vwX" aria-label="Close">✕</button><b class="vt" id="vwT"></b><button id="vwS" aria-label="Share">⤴</button></div><div class="psb" id="vwB"></div>';
+  document.body.append(v);v.querySelector('#vwX').onclick=()=>this.closeView();this.vw=v;return v},
+ async open(d){
+  const v=this.view(),body=v.querySelector('#vwB');
+  this.vurls.forEach(u=>URL.revokeObjectURL(u));this.vurls=[];
+  v.hidden=false;v.querySelector('#vwT').textContent=d.name;body.innerHTML='';v.querySelector('#vwS').onclick=()=>this.share(d);
+  const bl=await this.blobs(d);
+  if(!bl.length){const e=document.createElement('div');e.className='empty';e.style.marginTop='16px';e.textContent=ft('gone');body.append(e);return}
+  this.vurls=bl.map(b=>URL.createObjectURL(b));
+  if(d.type==='pdf'){
+   const c=document.createElement('div');c.className='empty';c.style.marginTop='16px';c.textContent=ft('pdfInfo');
+   const b=document.createElement('button');b.className='primary';b.style.marginTop='14px';b.textContent=ft('openPdf');
+   b.onclick=()=>window.open(this.vurls[0],'_blank');c.append(document.createElement('br'),b);body.append(c);
+  }else this.vurls.forEach((u,i)=>{const im=new Image();im.src=u;im.alt=ft('page')+' '+(i+1);im.className='vp';body.append(im)});
+ },
+ closeView(){this.vw.hidden=true;this.vurls.forEach(u=>URL.revokeObjectURL(u));this.vurls=[]}
+};
+
+UI.docItem=function(d){
+ const el=document.createElement('div');el.className='item';
+ el.innerHTML='<div class="th">📄</div><div class="mt"><b></b><small></small></div><button class="ib fv" aria-label="Favorite"></button><button class="ib mo" aria-label="Menu">⋮</button>';
+ el.querySelector('b').textContent=d.name;
+ el.querySelector('small').textContent=`${d.pages||1} ${ps('pg')} • ${new Date(d.date).toLocaleDateString(I18n.lang==='bn'?'bn-BD':'en-GB')}`;
+ const fv=el.querySelector('.fv');fv.textContent=d.fav?'★':'☆';fv.style.color=d.fav?'#F5A524':'var(--mute)';
+ Files.thumb(d,el.querySelector('.th'));
+ fv.onclick=e=>{e.stopPropagation();Files.fav(d)};
+ el.querySelector('.mo').onclick=e=>{e.stopPropagation();Files.sheet(d)};
+ el.onclick=()=>Files.open(d);return el};
+
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+UI.renderAll();
 </script>
 </body>
 </html>
